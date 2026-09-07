@@ -49,7 +49,22 @@ print(rag_chain.invoke(
     "Which school boards show the largest gap between reading and math performance?"
 ))
 
+import time
+import openai
+
+def safe_rag_call(chain, question, retries=3):
+    for attempt in range(retries):
+        try:
+            return chain.invoke(question)
+        except openai.RateLimitError:
+            time.sleep(2 ** attempt)
+        except openai.APITimeoutError:
+            return "Request timed out. Please try again."
+    return "Service temporarily unavailable."
+
 for q in questions:
-  print(f"Q: {q}")
-  print(f"A: {rag_chain.invoke(q)}")
-  print("---")
+    print(f"Q: {q}")
+    print("A: ", end="")
+    for chunk in rag_chain.stream(q):
+        print(chunk, end="", flush=True)
+    print("\n---")
