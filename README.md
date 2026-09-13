@@ -24,5 +24,9 @@ python vector_store_research.py  # builds the vector store
 streamlit run app_research.py    # launches the app
 ```
 
+## Related Research
+This application is built on original statistical research:  
+[ontario-educational-equity-analysis](https://github.com/msadlouni-lab/ontario-educational-equity-analysis)
+
 ## Research by
 Manal Saleh Al Adlouni — M.S. Data Science & AI, University of London
