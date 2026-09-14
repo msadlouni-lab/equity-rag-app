@@ -17,7 +17,7 @@ research covering 6,513 schools across 321 municipalities.
 ![App Screenshot](screenshots/app_demo_q2.png)
 
 
-
+**Live app:** Deploying soon — see setup instructions to run locally
 ---
 
 ## 🔍 What It Does
