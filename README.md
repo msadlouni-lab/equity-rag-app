@@ -97,7 +97,7 @@ python vector_store_research.py
 python -m streamlit run app_research.py
 ```
 
-App opens at **http://localhost:8501**
+App opens at **http://localhost:8501** (local) - live deployment coming soon
 
 ---
 
