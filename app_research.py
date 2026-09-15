@@ -6,6 +6,7 @@ Using 2023–2024 EQAO data merged with 2021 Canada Census data (6,513 schools, 
 """
 
 import streamlit as st
+import os
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_chroma import Chroma
@@ -44,6 +45,22 @@ def format_docs(docs):
 # ── Load RAG chain once ───────────────────────────────────────────────────────
 @st.cache_resource
 def load_chain():
+    # Auto-build vector store if it doesn't exist
+    if not os.path.exists("./equity_db"):
+        st.info("🔨 Building vector store for first time — takes ~2 minutes...")
+        from langchain_community.document_loaders import CSVLoader
+        from langchain.text_splitter import RecursiveCharacterTextSplitter
+        loader = CSVLoader("research_data_clean.csv")
+        docs = loader.load()
+        splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+        chunks = splitter.split_documents(docs)
+        Chroma.from_documents(
+            chunks,
+            OpenAIEmbeddings(model="text-embedding-3-small"),
+            persist_directory="./equity_db"
+        )
+        st.success("✅ Vector store built successfully!")
+
     vectorstore = Chroma(
         persist_directory="./equity_db",
         embedding_function=OpenAIEmbeddings(model="text-embedding-3-small")
