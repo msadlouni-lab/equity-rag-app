@@ -97,6 +97,7 @@ python -m streamlit run app_research.py
 ```
 
 🔗 Live app: ontario-equity-analyser.streamlit.app
+
 📂 GitHub: github.com/msadlouni-lab/equity-rag-app
 ---
 
