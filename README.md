@@ -16,10 +16,8 @@ research covering 6,513 schools across 321 municipalities.
 ![App Screenshot](screenshots/visualization_tab.png)
 ![App Screenshot](screenshots/vis_tab.png)
 
-**Live app:** Deploying soon — see setup instructions to run locally
 
-**Live app:** Deploying soon — see setup instructions to run locally
----
+**Live app:** [ontario-equity-analyser.streamlit.app](https://ontario-equity-analyser.streamlit.app)---
 
 ## 🔍 What It Does
 
