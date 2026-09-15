@@ -12,9 +12,9 @@ research covering 6,513 schools across 321 municipalities.
 
 ## 🖥️ Demo
 
-![App Screenshot](screenshots/app_demo.png)
-![App Screenshot](screenshots/app_demo_q1.png)
-![App Screenshot](screenshots/app_demo_q2.png)
+![App Screenshot](screenshots/ask_the_data_tab.png)
+![App Screenshot](screenshots/visualization_tab.png)
+![App Screenshot](screenshots/vis_tab.png)
 
 **Live app:** Deploying soon — see setup instructions to run locally
 

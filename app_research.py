@@ -1,5 +1,5 @@
 """
-app.py — Ontario Education Equity Analyser
+app_research.py — Ontario Education Equity Analyser
 Built on Manal Saleh Al Adlouni's research:
 "The Impact of Socioeconomic Factors on Grade 6 Reading Achievement in Ontario"
 Using 2023–2024 EQAO data merged with 2021 Canada Census data (6,513 schools, 321 municipalities)
@@ -12,9 +12,19 @@ from langchain_chroma import Chroma
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
-
+import plotly.express as px
 from data_lookup import get_lowest_reading, get_equity_risk_schools, get_highest_lowincome
 
+load_dotenv()
+
+# ── Page config ──────────────────────────────────────────────────────────────
+st.set_page_config(
+    page_title="Ontario Equity Analyser",
+    page_icon="🎓",
+    layout="wide"
+)
+
+# ── Route question function ───────────────────────────────────────────────────
 def route_question(question):
     q = question.lower()
     if any(w in q for w in ["lowest", "worst", "bottom", "least"]) and \
@@ -26,14 +36,10 @@ def route_question(question):
     if any(w in q for w in ["equity risk", "at risk"]):
         return "📊 **Equity risk schools (reading < 60%):**\n\n```\n" + get_equity_risk_schools() + "\n```"
     return None
-load_dotenv()
 
-# ── Page config ──────────────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="Ontario Equity Analyser",
-    page_icon="🎓",
-    layout="wide"
-)
+# ── Format docs helper ────────────────────────────────────────────────────────
+def format_docs(docs):
+    return "\n\n".join(d.page_content for d in docs)
 
 # ── Load RAG chain once ───────────────────────────────────────────────────────
 @st.cache_resource
@@ -47,10 +53,6 @@ def load_chain():
         search_kwargs={"k": 8}
     )
 
-    def format_docs(docs):
-        return "\n\n".join(d.page_content for d in docs)
-
-    # System prompt grounded in your actual research findings
     RAG_PROMPT = ChatPromptTemplate.from_template("""
 You are an educational equity analyst assistant for Ontario school boards.
 You are powered by original research on Grade 6 reading achievement across Ontario,
@@ -89,16 +91,41 @@ research context about socioeconomic factors and educational equity in Ontario.
         | StrOutputParser()
     )
 
+# ── Load visualisation data once ──────────────────────────────────────────────
+@st.cache_data
+def load_viz_data():
+    import pandas as pd
+    import numpy as np
+    df = pd.read_csv("research_data_clean.csv")
+
+    def clean_pct(val):
+        if pd.isna(val):
+            return np.nan
+        s = str(val).strip().replace('%', '')
+        if s in ('N/R', 'N/A', 'N/D', 'SP', '', 'nan'):
+            return np.nan
+        try:
+            return float(s)
+        except:
+            return np.nan
+
+    for col in ['Grade6Reading_pct', 'Grade6Math_pct']:
+        if col in df.columns:
+            df[col] = df[col].apply(clean_pct)
+
+    return df
+
+# ── Initialise ────────────────────────────────────────────────────────────────
 rag_chain = load_chain()
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.title("🎓 Ontario Equity Analyser")
     st.markdown("""
-    **Research-powered AI assistant** built on original analysis of Grade 6 reading 
+    **Research-powered AI assistant** built on original analysis of Grade 6 reading
     achievement across Ontario.
-    
-    **Dataset:** 6,513 schools · 321 municipalities  
+
+    **Dataset:** 6,513 schools · 321 municipalities
     **Sources:** EQAO 2023–24 + Canada Census 2021
     """)
     st.divider()
@@ -125,54 +152,151 @@ with st.sidebar:
 
 # ── Main area ─────────────────────────────────────────────────────────────────
 st.title("Ontario Education Equity Analyser")
-st.caption(
-    "Ask questions about Grade 6 reading achievement across Ontario — "
-    "powered by original research combining EQAO and Census data."
-)
+st.caption("Research-powered AI assistant · 6,513 schools · 321 municipalities · EQAO 2023–24 + Census 2021")
 
-# Research summary metrics
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("Schools Analysed", "6,513")
-col2.metric("Municipalities", "321")
-col3.metric("Provincial Median Reading", "85%")
-col4.metric("Equity Risk Schools", "291")
+# ── Tabs ──────────────────────────────────────────────────────────────────────
+tab1, tab2 = st.tabs(["💬 Ask the Data", "📊 Visualisations"])
 
-st.divider()
+# ════════════════════════════════════════════════════════════════════════════
+# TAB 1 — CHAT
+# ════════════════════════════════════════════════════════════════════════════
+with tab1:
+    # Research summary metrics
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Schools Analysed", "6,513")
+    col2.metric("Municipalities", "321")
+    col3.metric("Provincial Median Reading", "85%")
+    col4.metric("Equity Risk Schools", "291")
+    st.divider()
 
-# ── Session state for chat history ───────────────────────────────────────────
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+    # Session state
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-# Handle sidebar button prefill
-if "prefill_question" in st.session_state:
-    prefill = st.session_state.pop("prefill_question")
-    st.session_state.messages.append({"role": "user", "content": prefill})
-    with st.chat_message("user"):
-        st.write(prefill)
-    with st.chat_message("assistant"):
-        with st.spinner("Analysing research data..."):
-            response = st.write_stream(rag_chain.stream(prefill))
-    st.session_state.messages.append({"role": "assistant", "content": response})
+    # Handle sidebar prefill
+    if "prefill_question" in st.session_state:
+        prefill = st.session_state.pop("prefill_question")
+        st.session_state.messages.append({"role": "user", "content": prefill})
+        with st.chat_message("user"):
+            st.write(prefill)
+        with st.chat_message("assistant"):
+            with st.spinner("Analysing..."):
+                direct = route_question(prefill)
+                if direct:
+                    st.markdown(direct)
+                    response = direct
+                else:
+                    response = st.write_stream(rag_chain.stream(prefill))
+        st.session_state.messages.append({"role": "assistant", "content": response})
 
-# ── Display chat history ──────────────────────────────────────────────────────
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.write(msg["content"])
+    # Display history
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
 
-# ── Chat input ────────────────────────────────────────────────────────────────
-if question := st.chat_input("Ask about Ontario school equity..."):
-    st.session_state.messages.append({"role": "user", "content": question})
-    with st.chat_message("user"):
-        st.write(question)
-    with st.chat_message("assistant"):
-        with st.spinner("Analysing research data..."):
-            direct_answer = route_question(question)
-            if direct_answer:
-                st.markdown(direct_answer)
-                response = direct_answer
-            else:
-                response = st.write_stream(rag_chain.stream(question))
-    st.session_state.messages.append({"role": "assistant", "content": response})
+    # Chat input
+    if question := st.chat_input("Ask about Ontario school equity..."):
+        st.session_state.messages.append({"role": "user", "content": question})
+        with st.chat_message("user"):
+            st.write(question)
+        with st.chat_message("assistant"):
+            with st.spinner("Analysing research data..."):
+                direct_answer = route_question(question)
+                if direct_answer:
+                    st.markdown(direct_answer)
+                    response = direct_answer
+                else:
+                    response = st.write_stream(rag_chain.stream(question))
+        st.session_state.messages.append({"role": "assistant", "content": response})
+
+# ════════════════════════════════════════════════════════════════════════════
+# TAB 2 — VISUALISATIONS
+# ════════════════════════════════════════════════════════════════════════════
+with tab2:
+    import pandas as pd
+    df_viz = load_viz_data()
+
+    st.subheader("Key Research Findings")
+    st.caption("Visualisations from: The Impact of Socioeconomic Factors on Grade 6 Reading Achievement in Ontario")
+
+    # ── Chart 1: Low Income vs Reading ──────────────────────────────────────
+    st.markdown("#### Low-Income Rate vs Grade 6 Reading Achievement")
+    df_scatter = df_viz[[
+        'School Name', 'Board Name', 'Municipality',
+        'Grade6Reading', 'LowIncome_pct', 'NoDegree_pct'
+    ]].dropna()
+    fig1 = px.scatter(
+        df_scatter,
+        x='LowIncome_pct',
+        y='Grade6Reading',
+        hover_data=['School Name', 'Board Name', 'Municipality'],
+        color='NoDegree_pct',
+        color_continuous_scale='RdYlGn_r',
+        labels={
+            'LowIncome_pct': 'Low-Income Rate (%)',
+            'Grade6Reading': 'Grade 6 Reading Achievement (%)',
+            'NoDegree_pct': 'Parents Without Degree (%)'
+        },
+        title="Low-Income Rate vs Grade 6 Reading (colour = parental education)",
+        opacity=0.6
+    )
+    fig1.update_layout(height=450)
+    st.plotly_chart(fig1, use_container_width=True)
+    st.caption("Each point is one school. Hover to see school name and board. r = -0.33 (OLS regression finding).")
+
+    # ── Chart 2: Feature Importance ─────────────────────────────────────────
+    st.markdown("#### Equity Risk Classifier — Feature Importance")
+    feat_data = {
+        'Feature': ['Grade 3 Math', 'Grade 3 Reading', 'Population Density',
+                    'Low-Income Rate', 'Parents No Degree', 'Special Ed Rate'],
+        'Importance': [0.282, 0.242, 0.151, 0.126, 0.101, 0.099]
+    }
+    feat_df = pd.DataFrame(feat_data).sort_values('Importance')
+    fig2 = px.bar(
+        feat_df, x='Importance', y='Feature', orientation='h',
+        color='Importance', color_continuous_scale='Teal',
+        title="Random Forest Feature Importance — Equity Risk Classifier (ROC-AUC: 0.959)"
+    )
+    fig2.update_layout(height=350, showlegend=False)
+    st.plotly_chart(fig2, use_container_width=True)
+    st.caption("Grade 3 scores rank highest — suggesting early intervention is more predictive than socioeconomic targeting alone.")
+
+    # ── Chart 3: Board-level averages ────────────────────────────────────────
+    st.markdown("#### Grade 6 Reading Achievement by Board — Bottom 15")
+    board_avg = (
+        df_viz.groupby('Board Name')['Grade6Reading']
+        .mean()
+        .reset_index()
+        .sort_values('Grade6Reading')
+        .head(15)
+    )
+    fig3 = px.bar(
+        board_avg, x='Grade6Reading', y='Board Name', orientation='h',
+        color='Grade6Reading', color_continuous_scale='RdYlGn',
+        labels={'Grade6Reading': 'Average Reading Achievement (%)'},
+        title="15 Boards with Lowest Average Grade 6 Reading Achievement"
+    )
+    fig3.update_layout(height=450, showlegend=False)
+    st.plotly_chart(fig3, use_container_width=True)
+
+    # ── Table: Equity Risk Schools ───────────────────────────────────────────
+    st.markdown("#### Equity Risk Schools — Reading Achievement Below 60%")
+    risk_df = (
+        df_viz[df_viz['EquityRisk'] == True][[
+            'School Name', 'Board Name', 'Municipality',
+            'Grade6Reading', 'LowIncome_pct', 'NoDegree_pct'
+        ]]
+        .drop_duplicates(subset=['School Name', 'Board Name'])
+        .sort_values('Grade6Reading')
+        .rename(columns={
+            'Grade6Reading': 'Reading %',
+            'LowIncome_pct': 'Low Income %',
+            'NoDegree_pct': 'No Degree %'
+        })
+    )
+    st.dataframe(risk_df, use_container_width=True, hide_index=True)
+    st.caption(f"Showing {len(risk_df)} schools with Grade 6 reading below 60%. Sortable by clicking column headers.")
+
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.divider()
 st.caption(
