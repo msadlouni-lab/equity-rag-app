@@ -49,7 +49,7 @@ def load_chain():
     if not os.path.exists("./equity_db"):
         st.info("🔨 Building vector store for first time — takes ~2 minutes...")
         from langchain_community.document_loaders import CSVLoader
-        from langchain.text_splitter import RecursiveCharacterTextSplitter
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
         loader = CSVLoader("research_data_clean.csv")
         docs = loader.load()
         splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
