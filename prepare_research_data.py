@@ -1,8 +1,6 @@
 """
 prepare_research_data.py
-Prepares Manal's actual research dataset (CW1_processed_analysis_data.csv)
 for loading into the RAG vector store.
-Run this ONCE to generate research_data_clean.csv
 """
 
 import pandas as pd
