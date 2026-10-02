@@ -52,7 +52,6 @@ features = [
 ]
 
 # Target: equity risk = reading score below 60%
-# (consistent with your research definition)
 df['EquityRisk'] = (df['Grade6Reading'] < 60).astype(int)
 
 # Drop rows with missing features or target
