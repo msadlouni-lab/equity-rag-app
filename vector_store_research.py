@@ -1,8 +1,7 @@
 """
 vector_store_research.py
 Builds the Chroma vector store from Manal's actual research dataset.
-Run this ONCE after prepare_research_data.py to rebuild the vector store.
-The existing equity_db folder will be replaced.
+
 """
 
 import shutil
